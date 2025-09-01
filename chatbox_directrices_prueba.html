@@ -1,0 +1,158 @@
+<html>
+<head>
+<meta charset="utf-8"/>
+<title>Chatbox Directrices</title>
+<style>
+body {
+  margin: 80px;
+  padding: 80px;
+  box-sizing: border-box;
+  background-image: url('https://ecopetrol.sharepoint.com/sites/DirectricesExogena/Documentos%20compartidos/fondo_ecopetrol.jpg');
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+body {
+  font-family: Arial, sans-serif;
+  background-color: #FFD100;
+  padding: 80px;
+}
+
+select, button {
+  padding: 20px;
+  margin: 30px 0;
+  width: 100%;
+}
+
+.response-box {
+  background-color: #BFD730;
+  padding: 60px;
+  border-radius: 30px;
+  margin-top: 50px;
+  color: #003A32;
+}
+
+a {
+  color: #003A32;
+  text-decoration: underline;
+}
+</style>
+</head>
+<body>
+
+<h2>¿Sobre qué tema quieres preguntar?</h2>
+<select id="temaSelect" onchange="loadPreguntas()">
+  <option value="">-- Selecciona un tema --</option>
+</select>
+
+<h2>Selecciona la pregunta</h2>
+<select id="preguntaSelect" onchange="mostrarRespuesta()">
+  <option value="">-- Selecciona una pregunta --</option>
+</select>
+
+<div class="response-box" id="respuestaContainer"></div>
+
+<button onclick="elevarConsulta()">No encontré mi pregunta, elevar consulta</button>
+
+<!-- Librería para leer Excel -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<script>
+let chatbotData = {};
+
+// 🔗 Enlace directo a tu Excel en SharePoint
+const excelUrl = "https://ecopetrol.sharepoint.com/:x:/r/sites/DirectricesExogena/Documentos%20compartidos/Matriz%20de%20directrices.xlsx?d=w002340b9e4b04dc2969fed413d0ffcbb&csf=1&web=1&e=R9kzkC&download=1";
+
+// Cargar datos desde el Excel
+async function loadExcelData() {
+  try {
+    const response = await fetch(excelUrl);
+    const arrayBuffer = await response.arrayBuffer();
+    const workbook = XLSX.read(arrayBuffer, { type: "array" });
+    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+    const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+
+    // Esperamos que las columnas sean:
+    // Tema | Pregunta | 2021 | 2022 | 2023 | 2024 | 2025 | Corporativo | Link
+    jsonData.forEach((row, index) => {
+      if (index === 0) return; // saltar encabezado
+      const [tema, pregunta, resp2021, resp2022, resp2023, resp2024, resp2025, corporativo, link] = row;
+      if (!tema || !pregunta) return;
+
+      if (!chatbotData[tema]) chatbotData[tema] = {};
+      chatbotData[tema][pregunta] = {
+        "2021": resp2021 || "",
+        "2022": resp2022 || "",
+        "2023": resp2023 || "",
+        "2024": resp2024 || "",
+        "2025": resp2025 || "",
+        "corporativo": corporativo || "",
+        "link": link || ""
+      };
+    });
+
+    loadTemas();
+  } catch (error) {
+    console.error("Error cargando el Excel:", error);
+    alert("No se pudo cargar el archivo de SharePoint. Revisa el enlace.");
+  }
+}
+
+function loadTemas() {
+  const temaSelect = document.getElementById('temaSelect');
+  temaSelect.innerHTML = '<option value="">-- Selecciona un tema --</option>';
+  for (let tema in chatbotData) {
+    let option = document.createElement('option');
+    option.value = tema;
+    option.textContent = tema;
+    temaSelect.appendChild(option);
+  }
+}
+
+function loadPreguntas() {
+  const tema = document.getElementById('temaSelect').value;
+  const preguntaSelect = document.getElementById('preguntaSelect');
+  preguntaSelect.innerHTML = '<option value="">-- Selecciona una pregunta --</option>';
+  if (tema && chatbotData[tema]) {
+    for (let pregunta in chatbotData[tema]) {
+      let option = document.createElement('option');
+      option.value = pregunta;
+      option.textContent = pregunta;
+      preguntaSelect.appendChild(option);
+    }
+  }
+  document.getElementById('respuestaContainer').innerHTML = '';
+}
+
+function mostrarRespuesta() {
+  const tema = document.getElementById('temaSelect').value;
+  const pregunta = document.getElementById('preguntaSelect').value;
+  const container = document.getElementById('respuestaContainer');
+  if (tema && pregunta && chatbotData[tema][pregunta]) {
+    const data = chatbotData[tema][pregunta];
+    container.innerHTML = `
+      <strong>Respuesta por año:</strong><br>
+      <b>2021:</b> ${data['2021']}<br>
+      <b>2022:</b> ${data['2022']}<br>
+      <b>2023:</b> ${data['2023']}<br>
+      <b>2024:</b> ${data['2024']}<br>
+      <b>2025:</b> ${data['2025']}<br><br>
+      <strong>Directriz Corporativa:</strong><br>${data['corporativo']}<br><br>
+      <strong>Link de soporte:</strong><br><a href="${data['link']}" target="_blank">${data['link']}</a>
+    `;
+  } else {
+    container.innerHTML = '';
+  }
+}
+
+function elevarConsulta() {
+  const mailto = "mailto:walter.castro@ecopetrol.com.co?cc=adalbert.palacios@ecopetrol.com.co;sandra.bulla@ecopetrol.com.co;diana.espinosa@ecopetrol.com.co;jennyca.rodriguez@ecopetrol.com.co&subject=Consulta Directriz Exógena&body=No encontré mi pregunta en el chatbot. Por favor ayúdame.";
+  window.location.href = mailto;
+}
+
+// Al cargar la página → leer Excel
+window.onload = loadExcelData;
+</script>
+</body>
+</html>
